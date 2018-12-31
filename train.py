@@ -12,7 +12,7 @@ def main():
     model = build_model(model_name=model_name, hidden_units=input_arguments.hidden_units)
     train_model(data_dir=input_arguments.data_dir, model=model, device=device, model_mode=model_mode,
                 learning_rate=input_arguments.learning_rate, model_name=model_name,
-                hidden_units=input_arguments.hidden_units)
+                checkpoint_loc=input_arguments.save_dir, hidden_units=input_arguments.hidden_units)
 
 
 def build_model(model_name='vgg16', hidden_units=1024):
@@ -30,7 +30,7 @@ def build_model(model_name='vgg16', hidden_units=1024):
     return model
 
 
-def save_checkpoint(model, optimizer, epochs, image_input, learning_rate, model_name, hidden_units):
+def save_checkpoint(model, optimizer, epochs, image_input, learning_rate, model_name, hidden_units, checkpoint_loc):
     model.class_to_idx = image_input.class_to_idx
     checkpoint = {'state_dict': model.state_dict(),
                   'hidden_units': hidden_units,
@@ -41,7 +41,7 @@ def save_checkpoint(model, optimizer, epochs, image_input, learning_rate, model_
                   'learning_rate': learning_rate,
                   'classifier': model.classifier,
                   }
-    torch.save(checkpoint, 'checkpoint.pth')
+    torch.save(checkpoint, checkpoint_loc)
 
 
 def load_checkpoint(checkpoint_loc='checkpoint.pth'):
@@ -69,8 +69,7 @@ def do_evaluate(device, model, inputs):
     print('Accuracy of the network over the %d test images: %d %%' % (total, (100 * correct / total)))
 
 
-def do_training(model, trainloader, validationloader, criterion, optimizer, device, print_every=10,  steps=0, epochs=3):
-
+def do_training(model, trainloader, validationloader, criterion, optimizer, device, print_every=10, steps=0, epochs=3):
     running_loss = 0
 
     # change to cuda
@@ -116,8 +115,8 @@ def do_training(model, trainloader, validationloader, criterion, optimizer, devi
     return model
 
 
-def train_model(device, model, model_mode, model_name, hidden_units, data_dir='flowers/', step=0, epochs=3,
-                print_every=10, learning_rate=0.0005):
+def train_model(device, model, model_mode, model_name, hidden_units, checkpoint_loc, data_dir='flowers/', step=0,
+                epochs=3, print_every=10, learning_rate=0.0005):
     '''Define data transforms, image datasets and data loaders'''
     data_transforms = {
         'train': transforms.Compose([
@@ -154,7 +153,8 @@ def train_model(device, model, model_mode, model_name, hidden_units, data_dir='f
     do_evaluate(device=device, model=model, inputs=dataloaders[model_mode[1]])
     print("Saving the model...")
     save_checkpoint(model=model, optimizer=optimizer, epochs=epochs, hidden_units=hidden_units,
-                    image_input=image_datasets[model_mode[2]], learning_rate=learning_rate, model_name=model_name)
+                    checkpoint_loc=checkpoint_loc, image_input=image_datasets[model_mode[2]],
+                    learning_rate=learning_rate, model_name=model_name)
 
 
 def device_in_use(gpu_ind=True):
@@ -168,7 +168,7 @@ def input_argparse():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir', type=str, default='flowers/',
                         help='set the directory where the data is present')
-    parser.add_argument('--save_dir', type=str, default='checkpoints/',
+    parser.add_argument('--save_dir', type=str, default='./checkpoint.pth',
                         help='directory where the checkpoint will be saved')
     parser.add_argument('--arch', type=str, default='vgg16',
                         help='select the pretrained model')
